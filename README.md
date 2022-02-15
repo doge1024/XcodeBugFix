@@ -3,6 +3,8 @@ Fixed Xcode13 No Respond When Editing
 
 解决 Xcode13 的卡顿问题
 
+本插件根据 [Xcode-Plugin-Template](https://github.com/doge1024/Xcode-Plugin-Template) 模板开发
+
 # Installation
 
 1. 打开 `钥匙串访问` app
