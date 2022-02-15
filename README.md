@@ -1,7 +1,9 @@
 # XcodeBugFix
 Fixed Xcode13 No Respond When Editing
 
-Installation
+解决 Xcode13 的卡顿问题
+
+# Installation
 
 1. 打开 `钥匙串访问` app
 2. 打开 钥匙串访问/证书助理/创建证书...
@@ -10,7 +12,7 @@ Installation
 5. 执行 `mkdir -p ~/Library/Application\ Support/Developer/Shared/Xcode/Plug-ins` 创建插件目录
 6. 然后下载最新的release包，解压放到第5步的Plug-ins文件夹中，重启 Xcode 就可以体验到流畅的编辑体验了
 
-Notes
+# Notes
 
 如果你想自己解决问题，向项目贡献代码：
 1. 按照上面的步骤，将 Xcode 重新签名
