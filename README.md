@@ -11,6 +11,7 @@ Fixed Xcode13 No Respond When Editing
 4. 执行 `sudo codesign -f -s XcodeSigner /Applications/Xcode.app` 将 Xcode 重新签名 （过程较长，中间会提示输入密码）
 5. 执行 `mkdir -p ~/Library/Application\ Support/Developer/Shared/Xcode/Plug-ins` 创建插件目录
 6. 然后下载最新的release包，解压放到第5步的Plug-ins文件夹中，重启 Xcode 就可以体验到流畅的编辑体验了
+7. 如果想要关闭，Edit菜单下有个按钮`切换XcodeBugFix开关`，点击后关闭，弹窗提示0/1 （0/1表示关闭/开启）
 
 # Notes
 
