@@ -16,9 +16,13 @@
 @interface XcodeBugFix (Fix)
 - (void)hookDVT;
 - (void)changeFixIvar;
++ (BOOL)fixIvar;
++ (void)setFixIvar:(BOOL)value;
++ (void)setFixIvarAndSync:(BOOL)value;
 @end
 
 static XcodeBugFix *sharedPlugin;
+static NSString * kXcodeBugFixKey = @"kXcodeBugFixKey";
 
 @implementation XcodeBugFix
 
@@ -58,6 +62,7 @@ static XcodeBugFix *sharedPlugin;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationDidFinishLaunchingNotification object:nil];
     [[NSOperationQueue mainQueue] addOperationWithBlock:^{
         [self initializeAndLog];
+        [self updateMenuItemTitle];
     }];
 }
 
@@ -67,6 +72,7 @@ static XcodeBugFix *sharedPlugin;
     NSString *version = [self.bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
     NSString *status = [self initialize] ? @"loaded successfully" : @"failed to load";
     NSLog(@"🔌 Plugin %@ %@ %@", name, version, status);
+    
     [self hookDVT];
 }
 
@@ -76,12 +82,22 @@ static XcodeBugFix *sharedPlugin;
 {
     // Create menu items, initialize UI, etc.
     // Sample Menu Item:
+    NSNumber *value = [[NSUserDefaults standardUserDefaults] objectForKey:kXcodeBugFixKey];
+    if (value == nil) {
+        // 默认YES
+        [XcodeBugFix setFixIvarAndSync:YES];
+    } else {
+        [XcodeBugFix setFixIvar:[value boolValue]];
+    }
+    NSLog(@"🔌 kXcodeBugFixKey当前状态是：%@", @([XcodeBugFix fixIvar]));
+    
     NSMenuItem *menuItem = [[NSApp mainMenu] itemWithTitle:@"Edit"];
     if (menuItem) {
         [[menuItem submenu] addItem:[NSMenuItem separatorItem]];
         NSMenuItem *actionMenuItem = [[NSMenuItem alloc] initWithTitle:@"切换XcodeBugFix开关" action:@selector(doMenuAction) keyEquivalent:@""];
         //[actionMenuItem setKeyEquivalentModifierMask:NSAlphaShiftKeyMask | NSControlKeyMask];
         [actionMenuItem setTarget:self];
+        actionMenuItem.tag = 10099;
         [[menuItem submenu] addItem:actionMenuItem];
         return YES;
     } else {
@@ -95,14 +111,20 @@ static XcodeBugFix *sharedPlugin;
     [self changeFixIvar];
 }
 
+- (void)updateMenuItemTitle {
+    NSMenuItem *menuItem = [[NSApp mainMenu] itemWithTitle:@"Edit"];
+    NSMenuItem *actionMenuItem = [[menuItem submenu] itemWithTag:10099];
+    [actionMenuItem setTitle:[NSString stringWithFormat:@"切换XcodeBugFix开关, 当前是：%@", @([XcodeBugFix fixIvar])]];
+}
+
 @end
 
 @implementation XcodeBugFix (Fix)
 
-static BOOL DVTSimplePlainTextDeserializer_DecodeString_RespondsToSelector = YES;
-
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
 id my_decodeString(id self, SEL _cmd) {
-    if (DVTSimplePlainTextDeserializer_DecodeString_RespondsToSelector == YES) {
+    if (skip_DVTSimplePlainTextDeserializer_DecodeString == YES) {
         /// NSLog(@"🔌 Plugin 执行到方法了 - 跳过");
     } else {
         id str = [self performSelector:@selector(my_decodeString)];
@@ -136,7 +158,7 @@ id my_decodeString(id self, SEL _cmd) {
                     method_exchangeImplementations(method_or, method_re2);
                     NSLog(@"🔌 Plugin did添加方法成功");
                 } else {
-                    NSLog(@"🔌 Plugin did添加方法失败");
+                    NSLog(@"🔌 Plugin did添加方法失败 %@", @(didAddMethod));
                 }
                 
             });
@@ -144,14 +166,37 @@ id my_decodeString(id self, SEL _cmd) {
     }
 }
 
+#pragma clang diagnostic pop
+static BOOL skip_DVTSimplePlainTextDeserializer_DecodeString = YES;
++ (BOOL)fixIvar {
+    return skip_DVTSimplePlainTextDeserializer_DecodeString;
+}
++ (void)setFixIvar:(BOOL)value {
+    skip_DVTSimplePlainTextDeserializer_DecodeString = value;
+    [[XcodeBugFix sharedPlugin] updateMenuItemTitle];
+}
+
++ (void)setFixIvarAndSync:(BOOL)value {
+    [XcodeBugFix setFixIvar:value];
+    [[NSUserDefaults standardUserDefaults] setObject:@(value) forKey:kXcodeBugFixKey];
+}
+
 - (void)changeFixIvar {
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        DVTSimplePlainTextDeserializer_DecodeString_RespondsToSelector = !DVTSimplePlainTextDeserializer_DecodeString_RespondsToSelector;
+    dispatch_block_t block = ^{
+        [XcodeBugFix setFixIvar:![XcodeBugFix fixIvar]];
+        [[NSUserDefaults standardUserDefaults] setObject:@([XcodeBugFix fixIvar]) forKey:kXcodeBugFixKey];
         
         NSAlert *alert = [[NSAlert alloc] init];
-        [alert setMessageText:[NSString stringWithFormat:@"设置成功，当前状态是：%@", @(DVTSimplePlainTextDeserializer_DecodeString_RespondsToSelector)]];
+        [alert setMessageText:[NSString stringWithFormat:@"设置成功，当前状态是：%@", @([XcodeBugFix fixIvar])]];
         [alert runModal];
-    }];
+    };
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            block();
+        }];
+    }
 }
 
 @end
